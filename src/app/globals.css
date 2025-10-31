@@ -1,26 +1,192 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+:root{
+  --accent:#6c1898;
+  --portal-bg:#f4f5f7; /* grey page background */
+  
+  /* Status colors matching the inspiration */
+  --status-accepted: #10b981; /* green */
+  --status-pending: #f59e0b; /* orange */
+  --status-on-hold: #f59e0b; /* orange */
+  --status-completed: #10b981; /* green */
+  --status-scheduled: #3b82f6; /* blue */
+  --status-new: #6366f1; /* indigo */
+  --status-qualified: #10b981; /* green */
+  --status-closed-won: #059669; /* emerald */
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* whole app background */
+body{ background:var(--portal-bg); overflow-x: hidden; }
+
+/* accent sidebar */
+.sidebar{ background:var(--accent); color:#fff; }
+
+/* ACTIVE item: Clean white background */
+.sidebar .active-link {
+  background: #fff;
+  color: var(--accent);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* The main white page surface - clean like inspiration */
+.page-surface {
+  background: #fff;
+  border-top-left-radius: 32px;
+  border-bottom-left-radius: 32px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: none;
+}
+
+/* Remove all card borders and make them clean */
+.card {
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  background: #fff !important;
+}
+
+.card-header {
+  border-bottom: none !important;
+  background: transparent !important;
+}
+
+/* Clean input and select styling */
+input[type="text"], input[type="number"], input[type="email"], .input {
+  border: 1px solid #d1d5db !important;
+  border-radius: 6px !important;
+  padding: 8px 12px !important;
+  background: white !important;
+  font-size: 14px !important;
+  transition: border-color 0.2s, box-shadow 0.2s !important;
+}
+
+input[type="text"]:focus, input[type="number"]:focus, input[type="email"]:focus, .input:focus {
+  outline: none !important;
+  border-color: #6c1898 !important;
+  box-shadow: 0 0 0 3px rgba(108, 24, 152, 0.1) !important;
+}
+
+/* Select component styling */
+[data-radix-select-trigger] {
+  border: 1px solid #d1d5db !important;
+  border-radius: 6px !important;
+  padding: 8px 12px !important;
+  background: white !important;
+  font-size: 14px !important;
+  min-height: 40px !important;
+  transition: border-color 0.2s, box-shadow 0.2s !important;
+}
+
+[data-radix-select-trigger]:focus {
+  outline: none !important;
+  border-color: #6c1898 !important;
+  box-shadow: 0 0 0 3px rgba(108, 24, 152, 0.1) !important;
+}
+
+[data-radix-select-content] {
+  background: white !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+  z-index: 50 !important;
+}
+
+[data-radix-select-item] {
+  padding: 8px 12px !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s !important;
+}
+
+[data-radix-select-item]:hover {
+  background-color: #f3f4f6 !important;
+}
+
+[data-radix-select-item][data-highlighted] {
+  background-color: #6c1898 !important;
+  color: white !important;
+}
+
+/* Label styling */
+label {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: #374151 !important;
+  margin-bottom: 4px !important;
+  display: block !important;
+}
+
+/* Optional: tiny dotted accent like ref */
+.sidebar-dots{ position:absolute; left:16px; bottom:18px; display:grid; grid-template-columns:repeat(3,6px); gap:6px; }
+.sidebar-dots span{ width:6px; height:6px; border-radius:999px; background:rgba(255,255,255,.45); }
+
+/* Status badge styles */
+.status-accepted { background-color: rgb(220 252 231); color: rgb(22 101 52); }
+.status-pending { background-color: rgb(254 243 199); color: rgb(146 64 14); }
+.status-on-hold { background-color: rgb(254 243 199); color: rgb(146 64 14); }
+.status-completed { background-color: rgb(220 252 231); color: rgb(22 101 52); }
+.status-scheduled { background-color: rgb(219 234 254); color: rgb(30 64 175); }
+.status-new { background-color: rgb(224 231 255); color: rgb(67 56 202); }
+.status-qualified { background-color: rgb(220 252 231); color: rgb(22 101 52); }
+.status-closed-won { background-color: rgb(209 250 229); color: rgb(6 95 70); }
+
+/* Smooth transitions for all interactive elements */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition-duration: 300ms;
+}
+
+/* Enhanced sidebar animations */
+.sidebar {
+  transition: width 0.3s ease-in-out;
+}
+
+.sidebar * {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Page surface positioning for perfect merge */
+.page-surface {
+  position: relative;
+  z-index: 10;
+}
+
+/* Clean table styling for sales people */
+.sales-table {
+  border: none;
+  background: transparent;
+}
+
+.sales-table th,
+.sales-table td {
+  border: none;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.sales-table tr:hover {
+  background: #f8fafc;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .page-surface {
+    border-radius: 20px;
+    margin: 0;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  
+  .sidebar .active-link {
+    margin-right: 0;
+    border-radius: 12px;
+    transform: none;
+  }
+  
+  .sidebar .active-link::before,
+  .sidebar .active-link::after {
+    display: none;
+  }
+  
+  .sidebar {
+    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
 }

@@ -1,0 +1,178 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// NextAuth.js Models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Application Models
+enum UserRole {
+  ADMIN
+  SALES_PERSON
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL_SENT
+  NEGOTIATION
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  name              String?
+  password          String
+  role              UserRole  @default(SALES_PERSON)
+  calendlyToken     String?   @db.Text
+  calendlyUri       String?   // Calendly user URI for API calls
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // NextAuth relations
+  accounts Account[]
+  sessions Session[]
+
+  // Application relations
+  meetings Meeting[]
+  leads    Lead[]
+  createdSalesPeople User[] @relation("AdminToSalesPerson")
+  createdBy          User?  @relation("AdminToSalesPerson", fields: [createdById], references: [id])
+  createdById        String?
+
+  @@map("users")
+}
+
+model Meeting {
+  id                 String        @id @default(cuid())
+  calendlyEventId    String        @unique // Calendly event UUID
+  name               String        // Meeting name/title
+  status             MeetingStatus @default(SCHEDULED)
+  startTime          DateTime
+  endTime            DateTime
+  duration           Int           // Duration in minutes
+  location           String?       // Meeting location (Zoom, Google Meet, etc.)
+  description        String?       @db.Text
+  
+  // Attendee information
+  attendeeName       String
+  attendeeEmail      String
+  attendeePhone      String?
+  attendeeTimezone   String?
+  
+  // Calendly specific data
+  calendlyUri        String        // Event URI from Calendly
+  eventType          String?       // Event type name
+  inviteeUri         String?       // Invitee URI from Calendly
+  
+  // Tracking fields
+  isRescheduled      Boolean       @default(false)
+  rescheduleCount    Int           @default(0)
+  cancelReason       String?
+  
+  // Relations
+  salesPersonId      String
+  salesPerson        User          @relation(fields: [salesPersonId], references: [id])
+  lead               Lead?
+  
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@map("meetings")
+}
+
+model Lead {
+  id                String     @id @default(cuid())
+  
+  // Basic information (auto-populated from meeting)
+  name              String
+  email             String
+  phone             String?
+  company           String?
+  jobTitle          String?
+  
+  // Lead qualification (manual entry)
+  status            LeadStatus @default(NEW)
+  source            String?    // How they found us
+  budget            String?    // Budget range
+  timeline          String?    // Decision timeline
+  painPoints        String?    @db.Text // What problems they're trying to solve
+  
+  // Meeting outcome (manual entry by sales person)
+  meetingWentWell   Boolean?   // Did the meeting go well?
+  nextSteps         String?    @db.Text // What are the next steps?
+  followUpDate      DateTime?  // When to follow up
+  notes             String?    @db.Text // Additional notes
+  
+  // Scoring and priority
+  leadScore         Int?       @default(0) // Lead score out of 100
+  priority          String?    @default("MEDIUM") // HIGH, MEDIUM, LOW
+  
+  // Deal information
+  estimatedValue    Decimal?   @db.Decimal(10, 2)
+  probability       Int?       // Probability of closing (0-100%)
+  expectedCloseDate DateTime?
+  
+  // Relations
+  meetingId         String?    @unique
+  meeting           Meeting?   @relation(fields: [meetingId], references: [id])
+  salesPersonId     String
+  salesPerson       User       @relation(fields: [salesPersonId], references: [id])
+  
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@map("leads")
+}
