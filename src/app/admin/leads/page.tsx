@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Badge } from "@/components/ui/badge"
-import { Target, Mail, Phone, Building, DollarSign, Calendar, ChevronDown, ChevronRight, User } from "lucide-react"
+import { Target, Mail, Phone, Building, DollarSign, Calendar, ChevronDown, ChevronRight, User, Plus } from "lucide-react"
 import { toast } from "sonner"
 import { formatDate, formatCurrency } from "@/lib/utils"
+import { AddLeadForm } from "@/components/forms/add-lead-form"
 
 interface Lead {
   id: string
@@ -18,18 +19,24 @@ interface Lead {
   status: string
   estimatedValue: number | null
   probability: number | null
-  expectedCloseDate: string | null
-  leadScore: number | null
   priority: string | null
   createdAt: string
   salesPerson: {
-    name: string | null
+    id: string
+    name: string
     email: string
-  }
+  } | null
+  source: {
+    id: string
+    name: string
+  } | null
   meeting: {
+    id: string
     name: string
     startTime: string
   } | null
+  leadScore: number | null
+  expectedCloseDate: string | null
 }
 
 export default function AdminLeadsPage() {
@@ -37,6 +44,7 @@ export default function AdminLeadsPage() {
   const [loading, setLoading] = useState(true)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [filter, setFilter] = useState<string>("all")
+  const [isAddLeadOpen, setIsAddLeadOpen] = useState(false)
 
   useEffect(() => {
     fetchLeads()
@@ -149,6 +157,10 @@ export default function AdminLeadsPage() {
       <div className="flex-1 space-y-4 p-8 pt-6">
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold tracking-tight">All Leads</h2>
+          <Button onClick={() => setIsAddLeadOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Lead
+          </Button>
         </div>
 
         {/* Filter Buttons */}
@@ -185,6 +197,9 @@ export default function AdminLeadsPage() {
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Company
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Source
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -235,6 +250,12 @@ export default function AdminLeadsPage() {
                       <div className="flex items-center">
                         <Building className="h-4 w-4 mr-2 text-gray-400" />
                         <span className="text-sm text-gray-900">{lead.company || "No company"}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <Target className="h-4 w-4 mr-2 text-gray-400" />
+                        <span className="text-sm text-gray-900">{lead.source?.name || "No source"}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -333,6 +354,14 @@ export default function AdminLeadsPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Add Lead Form */}
+        <AddLeadForm
+          isOpen={isAddLeadOpen}
+          onClose={() => setIsAddLeadOpen(false)}
+          onSuccess={fetchLeads}
+          isAdmin={true}
+        />
       </div>
     </DashboardLayout>
   )

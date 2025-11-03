@@ -8,10 +8,11 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Target, Mail, Phone, Building, DollarSign, Calendar, Edit, Save, X, ChevronDown, ChevronRight, User } from "lucide-react"
+import { Target, Mail, Phone, Building, DollarSign, Calendar, Edit, Save, X, ChevronDown, ChevronRight, User, Plus } from "lucide-react"
 import { toast } from "sonner"
 import { formatDate, formatCurrency } from "@/lib/utils"
 import { motion } from "framer-motion"
+import { AddLeadForm } from "@/components/forms/add-lead-form"
 
 
 interface Lead {
@@ -23,17 +24,21 @@ interface Lead {
   status: string
   estimatedValue: number | null
   probability: number | null
-  expectedCloseDate: string | null
-  leadScore: number | null
   priority: string | null
-  meetingWentWell: boolean | null
-  nextSteps: string | null
-  notes: string | null
   createdAt: string
+  source: {
+    id: string
+    name: string
+  } | null
   meeting: {
+    id: string
     name: string
     startTime: string
   } | null
+  meetingWentWell: boolean | null
+  nextSteps: string | null
+  notes: string | null
+  leadScore: number | null
 }
 
 interface EditingLead {
@@ -53,6 +58,7 @@ export default function MyLeadsPage() {
   const [editingLead, setEditingLead] = useState<EditingLead | null>(null)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [filter, setFilter] = useState<string>("all")
+  const [isAddLeadOpen, setIsAddLeadOpen] = useState(false)
 
   useEffect(() => {
     fetchLeads()
@@ -205,6 +211,10 @@ export default function MyLeadsPage() {
       <div className="flex-1 space-y-4 p-8 pt-6">
         <div className="flex items-center justify-between">
           <h2 className="text-3xl font-bold tracking-tight">My Leads</h2>
+          <Button onClick={() => setIsAddLeadOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Lead
+          </Button>
         </div>
 
         {/* Filter Buttons */}
@@ -238,6 +248,9 @@ export default function MyLeadsPage() {
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Company
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Source
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -288,6 +301,12 @@ export default function MyLeadsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <Target className="h-4 w-4 mr-2 text-gray-400" />
+                        <span className="text-sm text-gray-900">{lead.source?.name || "No source"}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(lead.status)}`}>
                         {lead.status.replace("_", " ")}
                       </span>
@@ -307,7 +326,10 @@ export default function MyLeadsPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td
+                      className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Button
                         size="sm"
                         variant="outline"
@@ -325,7 +347,7 @@ export default function MyLeadsPage() {
                   {/* Expanded row content */}
                   {expandedRows.has(lead.id) && (
                     <tr>
-                      <td colSpan={6} className="px-6 py-4 bg-gray-50">
+                      <td colSpan={7} className="px-6 py-4 bg-gray-50">
                         {editingLead?.id === lead.id ? (
                           // Edit Form
                           <motion.div
@@ -342,35 +364,35 @@ export default function MyLeadsPage() {
                                   value={editingLead.status}
                                   onValueChange={(value) => setEditingLead({ ...editingLead, status: value })}
                                 >
-                                 <SelectTrigger className="transition-all border-gray-300 hover:border-[var(--accent)]
+                                  <SelectTrigger className="transition-all border-gray-300 hover:border-[var(--accent)]
                           focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent)]
                           relative z-10">
                                     <SelectValue />
                                   </SelectTrigger>
-<SelectContent
-  position="popper"
-  side="bottom"
-  sideOffset={8}
-  className="z-50 bg-white border border-gray-200 shadow-lg rounded-lg
+                                  <SelectContent
+                                    position="popper"
+                                    side="bottom"
+                                    sideOffset={8}
+                                    className="z-50 bg-white border border-gray-200 shadow-lg rounded-lg
              data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95
              data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
->                                    {[
-                                      ["NEW", "New"],
-                                      ["CONTACTED", "Contacted"],
-                                      ["QUALIFIED", "Qualified"],
-                                      ["PROPOSAL_SENT", "Proposal Sent"],
-                                      ["NEGOTIATION", "Negotiation"],
-                                      ["CLOSED_WON", "Closed Won"],
-                                      ["CLOSED_LOST", "Closed Lost"],
-                                    ].map(([value, label]) => (
-                                      <SelectItem
-                                        key={value}
-                                        value={value}
-                                        className="cursor-pointer rounded-md transition-colors data-[highlighted]:bg-[var(--accent)]/10 data-[highlighted]:text-[var(--accent)] data-[state=checked]:bg-[var(--accent)]/15 data-[state=checked]:text-[var(--accent)]"
-                                      >
-                                        {label}
-                                      </SelectItem>
-                                    ))}
+                                  >                                    {[
+                                    ["NEW", "New"],
+                                    ["CONTACTED", "Contacted"],
+                                    ["QUALIFIED", "Qualified"],
+                                    ["PROPOSAL_SENT", "Proposal Sent"],
+                                    ["NEGOTIATION", "Negotiation"],
+                                    ["CLOSED_WON", "Closed Won"],
+                                    ["CLOSED_LOST", "Closed Lost"],
+                                  ].map(([value, label]) => (
+                                    <SelectItem
+                                      key={value}
+                                      value={value}
+                                      className="cursor-pointer rounded-md transition-colors data-[highlighted]:bg-[var(--accent)]/10 data-[highlighted]:text-[var(--accent)] data-[state=checked]:bg-[var(--accent)]/15 data-[state=checked]:text-[var(--accent)]"
+                                    >
+                                      {label}
+                                    </SelectItem>
+                                  ))}
                                   </SelectContent>
                                 </Select>
 
@@ -403,35 +425,35 @@ export default function MyLeadsPage() {
                                 </div>
                               </div>
                               <div>
-                              <Label htmlFor="priority">Priority</Label>
-<Select
-  value={editingLead.priority}
-  onValueChange={(value) => setEditingLead({ ...editingLead, priority: value })}
->
-  <SelectTrigger className="transition-all border-gray-300 hover:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent)] relative z-10">
-    <SelectValue />
-  </SelectTrigger>
-  <SelectContent
-    position="popper"
-    side="bottom"
-    sideOffset={8}
-    className="z-50 bg-white border border-gray-200 shadow-lg rounded-lg
+                                <Label htmlFor="priority">Priority</Label>
+                                <Select
+                                  value={editingLead.priority}
+                                  onValueChange={(value) => setEditingLead({ ...editingLead, priority: value })}
+                                >
+                                  <SelectTrigger className="transition-all border-gray-300 hover:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent)] relative z-10">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent
+                                    position="popper"
+                                    side="bottom"
+                                    sideOffset={8}
+                                    className="z-50 bg-white border border-gray-200 shadow-lg rounded-lg
                data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95
                data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
-  >
-    {["HIGH", "MEDIUM", "LOW"].map((p) => (
-      <SelectItem
-        key={p}
-        value={p}
-        className="cursor-pointer rounded-md transition-colors
+                                  >
+                                    {["HIGH", "MEDIUM", "LOW"].map((p) => (
+                                      <SelectItem
+                                        key={p}
+                                        value={p}
+                                        className="cursor-pointer rounded-md transition-colors
                    data-[highlighted]:bg-[var(--accent)]/10 data-[highlighted]:text-[var(--accent)]
                    data-[state=checked]:bg-[var(--accent)]/15 data-[state=checked]:text-[var(--accent)]"
-      >
-        {p.charAt(0) + p.slice(1).toLowerCase()}
-      </SelectItem>
-    ))}
-  </SelectContent>
-</Select>
+                                      >
+                                        {p.charAt(0) + p.slice(1).toLowerCase()}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
 
 
                               </div>
@@ -440,37 +462,37 @@ export default function MyLeadsPage() {
                               <h4 className="text-sm font-medium text-gray-900 mb-3">Additional Info</h4>
                               <div>
                                 <Label htmlFor="meetingWentWell">Meeting went well?</Label>
-<Select
-  value={editingLead.meetingWentWell}
-  onValueChange={(value) => setEditingLead({ ...editingLead, meetingWentWell: value })}
->
-  <SelectTrigger className="transition-all border-gray-300 hover:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent)] relative z-10">
-    <SelectValue placeholder="Select..." />
-  </SelectTrigger>
-  <SelectContent
-    position="popper"
-    side="bottom"
-    sideOffset={8}
-    className="z-50 bg-white border border-gray-200 shadow-lg rounded-lg
+                                <Select
+                                  value={editingLead.meetingWentWell}
+                                  onValueChange={(value) => setEditingLead({ ...editingLead, meetingWentWell: value })}
+                                >
+                                  <SelectTrigger className="transition-all border-gray-300 hover:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent)] relative z-10">
+                                    <SelectValue placeholder="Select..." />
+                                  </SelectTrigger>
+                                  <SelectContent
+                                    position="popper"
+                                    side="bottom"
+                                    sideOffset={8}
+                                    className="z-50 bg-white border border-gray-200 shadow-lg rounded-lg
                data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95
                data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
-  >
-    {[
-      ["true", "Yes"],
-      ["false", "No"],
-    ].map(([value, label]) => (
-      <SelectItem
-        key={value}
-        value={value}
-        className="cursor-pointer rounded-md transition-colors
+                                  >
+                                    {[
+                                      ["true", "Yes"],
+                                      ["false", "No"],
+                                    ].map(([value, label]) => (
+                                      <SelectItem
+                                        key={value}
+                                        value={value}
+                                        className="cursor-pointer rounded-md transition-colors
                    data-[highlighted]:bg-[var(--accent)]/10 data-[highlighted]:text-[var(--accent)]
                    data-[state=checked]:bg-[var(--accent)]/15 data-[state=checked]:text-[var(--accent)]"
-      >
-        {label}
-      </SelectItem>
-    ))}
-  </SelectContent>
-</Select>
+                                      >
+                                        {label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
 
                               </div>
                               <div>
@@ -594,6 +616,14 @@ export default function MyLeadsPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Add Lead Form */}
+        <AddLeadForm
+          isOpen={isAddLeadOpen}
+          onClose={() => setIsAddLeadOpen(false)}
+          onSuccess={fetchLeads}
+          isAdmin={false}
+        />
       </div>
     </DashboardLayout>
   )

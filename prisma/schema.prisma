@@ -133,6 +133,20 @@ model Meeting {
   @@map("meetings")
 }
 
+model LeadSource {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g., "Instagram", "LinkedIn", "Website", "Referral"
+  description String?  // Optional description
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  leads       Lead[]
+  
+  @@map("lead_sources")
+}
+
 model Lead {
   id                String     @id @default(cuid())
   
@@ -145,7 +159,8 @@ model Lead {
   
   // Lead qualification (manual entry)
   status            LeadStatus @default(NEW)
-  source            String?    // How they found us
+  sourceId          String?    // Reference to LeadSource
+  source            LeadSource? @relation(fields: [sourceId], references: [id])
   budget            String?    // Budget range
   timeline          String?    // Decision timeline
   painPoints        String?    @db.Text // What problems they're trying to solve
