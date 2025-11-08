@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -77,7 +77,6 @@ export function AirtableLeadsView({ isAdmin = false }: AirtableLeadsViewProps) {
   const [loading, setLoading] = useState(true)
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
   const [editValue, setEditValue] = useState("")
-  const [searchTerm, setSearchTerm] = useState("")
   const [filters, setFilters] = useState<Record<string, string>>({
     search: "",
     statusId: "all",
@@ -97,9 +96,51 @@ export function AirtableLeadsView({ isAdmin = false }: AirtableLeadsViewProps) {
     fetchInitialData()
   }, [])
 
+  const fetchLeads = useCallback(async () => {
+    try {
+      const params = new URLSearchParams()
+      
+      if (filters.search) params.append("search", filters.search)
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value && value !== "all" && key !== "search") {
+          params.append(key, value)
+        }
+      })
+
+      const endpoint = isAdmin ? "/api/admin/leads" : "/api/dashboard/leads"
+      const url = params.toString() ? `${endpoint}?${params}` : endpoint
+      
+      const response = await fetch(url)
+      if (response.ok) {
+        const data = await response.json()
+        setLeads(Array.isArray(data) ? data : [])
+      } else {
+        console.error("Failed to fetch leads:", response.status, response.statusText)
+        toast.error("Failed to fetch leads")
+        setLeads([])
+      }
+    } catch (error) {
+      toast.error("Error fetching leads")
+    } finally {
+      setLoading(false)
+    }
+  }, [filters, isAdmin])
+
+  // Memoize filter values to prevent unnecessary re-renders
+  const filterValues = useMemo(() => ({
+    search: filters.search || "",
+    statusId: filters.statusId || "all",
+    salesPersonId: filters.salesPersonId || "all", 
+    sourceId: filters.sourceId || "all",
+    priority: filters.priority || "all",
+    ...Object.fromEntries(
+      activeFilterColumns.map(col => [col, filters[col] || "all"])
+    )
+  }), [filters, activeFilterColumns])
+
   useEffect(() => {
     fetchLeads()
-  }, [filters.search, filters.statusId, filters.salesPersonId, filters.sourceId, filters.priority, JSON.stringify(filters)])
+  }, [fetchLeads])
 
   useEffect(() => {
     if (editingCell && editInputRef.current) {
@@ -134,36 +175,6 @@ export function AirtableLeadsView({ isAdmin = false }: AirtableLeadsViewProps) {
     }
   }
 
-  const fetchLeads = async () => {
-    try {
-      const params = new URLSearchParams()
-      
-      if (searchTerm) params.append("search", searchTerm)
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value && value !== "all") {
-          params.append(key, value)
-        }
-      })
-
-      const endpoint = isAdmin ? "/api/admin/leads" : "/api/dashboard/leads"
-      const url = params.toString() ? `${endpoint}?${params}` : endpoint
-      
-      const response = await fetch(url)
-      if (response.ok) {
-        const data = await response.json()
-        setLeads(Array.isArray(data) ? data : [])
-      } else {
-        console.error("Failed to fetch leads:", response.status, response.statusText)
-        toast.error("Failed to fetch leads")
-        setLeads([])
-      }
-    } catch (error) {
-      toast.error("Error fetching leads")
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleCellClick = (leadId: string, field: string, currentValue: any) => {
     if (field === 'name') {
       // Navigate to detail page instead of editing
@@ -172,7 +183,19 @@ export function AirtableLeadsView({ isAdmin = false }: AirtableLeadsViewProps) {
     }
     
     setEditingCell({ leadId, field })
-    setEditValue(currentValue?.toString() || "")
+    
+    // Set the correct edit value based on field type
+    if (field === 'statusId') {
+      setEditValue(currentValue?.id || "")
+    } else if (field === 'sourceId') {
+      setEditValue(currentValue?.id || "")
+    } else if (field === 'salesPersonId') {
+      setEditValue(currentValue || "")
+    } else if (field === 'priority') {
+      setEditValue(currentValue || "")
+    } else {
+      setEditValue(currentValue?.toString() || "")
+    }
   }
 
   const handleCellSave = async () => {
@@ -244,7 +267,8 @@ export function AirtableLeadsView({ isAdmin = false }: AirtableLeadsViewProps) {
       toast.success("Lead updated")
       setEditingCell(null)
       setEditValue("")
-      // Don't update state here - it's already updated in the dropdown
+      // Refetch leads to show updated data
+      fetchLeads()
     } catch (error) {
       console.error('Error updating lead:', error)
       toast.error(error instanceof Error ? error.message : "Failed to update lead")
@@ -261,6 +285,73 @@ export function AirtableLeadsView({ isAdmin = false }: AirtableLeadsViewProps) {
       handleCellSave()
     } else if (e.key === 'Escape') {
       handleCellCancel()
+    }
+  }
+
+  // Universal dropdown update function for all SELECT type fields
+  const handleDropdownChange = async (lead: Lead, field: string, newValue: string, column?: LeadColumn) => {
+    setEditValue(newValue)
+    
+    // Update the lead state immediately for instant UI feedback
+    let updatedLead = { ...lead }
+    
+    if (field === 'statusId') {
+      const selectedStatus = statuses.find(s => s.id === newValue)
+      updatedLead.status = selectedStatus || lead.status
+    } else if (field === 'sourceId') {
+      const selectedSource = leadSources.find(s => s.id === newValue)
+      updatedLead.source = selectedSource || lead.source
+    } else if (field === 'salesPersonId') {
+      updatedLead.salesPersonId = newValue
+    } else if (field === 'priority') {
+      updatedLead.priority = newValue
+    } else {
+      // Dynamic field
+      updatedLead.dynamicValues = { ...(lead.dynamicValues || {}), [field]: newValue }
+    }
+
+    setLeads(prevLeads => 
+      prevLeads.map(l => l.id === lead.id ? updatedLead : l)
+    )
+
+    // Save to backend immediately
+    try {
+      const payload = { 
+        id: lead.id,
+        name: lead.name,
+        email: lead.email,
+        phone: lead.phone,
+        company: lead.company,
+        priority: updatedLead.priority || "MEDIUM",
+        estimatedValue: lead.estimatedValue,
+        probability: lead.probability,
+        salesPersonId: updatedLead.salesPersonId,
+        statusId: updatedLead.status?.id,
+        sourceId: updatedLead.source?.id,
+        dynamicValues: updatedLead.dynamicValues
+      }
+
+      const endpoint = isAdmin ? "/api/admin/leads" : "/api/dashboard/leads"
+      const response = await fetch(endpoint, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) {
+        // Revert the optimistic update on error
+        setLeads(prevLeads => 
+          prevLeads.map(l => l.id === lead.id ? lead : l)
+        )
+        throw new Error(`Failed to update ${column?.name || field}`)
+      }
+
+      toast.success(`${column?.name || field} updated`)
+      setEditingCell(null)
+      setEditValue("")
+    } catch (error) {
+      console.error(`Error updating ${field}:`, error)
+      toast.error(`Failed to update ${column?.name || field}`)
     }
   }
 
@@ -367,29 +458,15 @@ export function AirtableLeadsView({ isAdmin = false }: AirtableLeadsViewProps) {
     const displayValue = value?.toString() || ""
 
     if (isEditing) {
+      // Handle all SELECT type fields uniformly
       if (field === 'statusId') {
         return (
           <Select 
             value={editValue} 
-            onValueChange={(val) => {
-              setEditValue(val)
-              // Update the lead state immediately for instant UI feedback
-              setLeads(prevLeads => 
-                prevLeads.map(l => 
-                  l.id === lead.id ? { 
-                    ...l, 
-                    status: statuses.find(s => s.id === val) || l.status 
-                  } : l
-                )
-              )
-              // Then save to backend
-              setTimeout(() => {
-                handleCellSave()
-              }, 100)
-            }}
+            onValueChange={(val) => handleDropdownChange(lead, field, val, { name: 'Status' } as LeadColumn)}
           >
             <SelectTrigger className="h-8 border-blue-500 focus:ring-blue-500">
-              <SelectValue />
+              <SelectValue placeholder="Select Status" />
             </SelectTrigger>
             <SelectContent>
               {statuses.map((status) => (
@@ -410,20 +487,10 @@ export function AirtableLeadsView({ isAdmin = false }: AirtableLeadsViewProps) {
         return (
           <Select 
             value={editValue} 
-            onValueChange={(val) => {
-              setEditValue(val)
-              setTimeout(() => {
-                handleCellSave()
-              }, 100)
-            }}
-            onOpenChange={(open) => {
-              if (!open && editValue !== displayValue) {
-                handleCellSave()
-              }
-            }}
+            onValueChange={(val) => handleDropdownChange(lead, field, val, { name: 'Source' } as LeadColumn)}
           >
             <SelectTrigger className="h-8 border-blue-500">
-              <SelectValue />
+              <SelectValue placeholder="Select Source" />
             </SelectTrigger>
             <SelectContent>
               {leadSources.map((source) => (
@@ -434,24 +501,14 @@ export function AirtableLeadsView({ isAdmin = false }: AirtableLeadsViewProps) {
             </SelectContent>
           </Select>
         )
-      } else if (field === 'salesPersonId' && isAdmin) {
+      } else if (field === 'salesPersonId') {
         return (
           <Select 
             value={editValue} 
-            onValueChange={(val) => {
-              setEditValue(val)
-              setTimeout(() => {
-                handleCellSave()
-              }, 100)
-            }}
-            onOpenChange={(open) => {
-              if (!open && editValue !== displayValue) {
-                handleCellSave()
-              }
-            }}
+            onValueChange={(val) => handleDropdownChange(lead, field, val, { name: 'Closer' } as LeadColumn)}
           >
             <SelectTrigger className="h-8 border-blue-500">
-              <SelectValue />
+              <SelectValue placeholder="Select Person" />
             </SelectTrigger>
             <SelectContent>
               {salesPeople.map((person) => (
@@ -466,20 +523,10 @@ export function AirtableLeadsView({ isAdmin = false }: AirtableLeadsViewProps) {
         return (
           <Select 
             value={editValue} 
-            onValueChange={(val) => {
-              setEditValue(val)
-              setTimeout(() => {
-                handleCellSave()
-              }, 100)
-            }}
-            onOpenChange={(open) => {
-              if (!open && editValue !== displayValue) {
-                handleCellSave()
-              }
-            }}
+            onValueChange={(val) => handleDropdownChange(lead, field, val, { name: 'Priority' } as LeadColumn)}
           >
             <SelectTrigger className="h-8 border-blue-500">
-              <SelectValue />
+              <SelectValue placeholder="Select Priority" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="HIGH">High</SelectItem>
@@ -492,20 +539,10 @@ export function AirtableLeadsView({ isAdmin = false }: AirtableLeadsViewProps) {
         return (
           <Select 
             value={editValue} 
-            onValueChange={(val) => {
-              setEditValue(val)
-              setTimeout(() => {
-                handleCellSave()
-              }, 100)
-            }}
-            onOpenChange={(open) => {
-              if (!open && editValue !== displayValue) {
-                handleCellSave()
-              }
-            }}
+            onValueChange={(val) => handleDropdownChange(lead, field, val, column)}
           >
             <SelectTrigger className="h-8 border-blue-500">
-              <SelectValue />
+              <SelectValue placeholder="Select Option" />
             </SelectTrigger>
             <SelectContent>
               {column.options.map((option) => (
@@ -682,7 +719,7 @@ export function AirtableLeadsView({ isAdmin = false }: AirtableLeadsViewProps) {
                   onValueChange={(value) => updateFilter(column.key, value)}
                 >
                   <SelectTrigger className="w-[140px] bg-white shadow-sm border-0 h-8">
-                    <SelectValue />
+                    <SelectValue placeholder={`Any ${column.name}`} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Any {column.name}</SelectItem>
@@ -718,7 +755,7 @@ export function AirtableLeadsView({ isAdmin = false }: AirtableLeadsViewProps) {
           <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Status is</span>
           <Select value={filters.statusId || "all"} onValueChange={(value) => updateFilter("statusId", value)}>
             <SelectTrigger className="w-[140px] bg-white shadow-sm border-0 h-8">
-              <SelectValue placeholder="Any" />
+              <SelectValue placeholder="Any Status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Any Status</SelectItem>
@@ -760,7 +797,7 @@ export function AirtableLeadsView({ isAdmin = false }: AirtableLeadsViewProps) {
           <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Priority is</span>
           <Select value={filters.priority || "all"} onValueChange={(value) => updateFilter("priority", value)}>
             <SelectTrigger className="w-[120px] bg-white shadow-sm border-0 h-8">
-              <SelectValue placeholder="Any" />
+              <SelectValue placeholder="Any Priority" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Any Priority</SelectItem>
@@ -909,7 +946,7 @@ export function AirtableLeadsView({ isAdmin = false }: AirtableLeadsViewProps) {
                   <td className="px-4 py-3 whitespace-nowrap">
                     <Select value={newLeadDraft.priority || "MEDIUM"} onValueChange={(val) => updateNewLeadDraft("priority", val)}>
                       <SelectTrigger className="h-8 border-blue-500">
-                        <SelectValue />
+                        <SelectValue placeholder="Priority" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="HIGH">High</SelectItem>
@@ -991,7 +1028,7 @@ export function AirtableLeadsView({ isAdmin = false }: AirtableLeadsViewProps) {
                     {renderEditableCell(lead, 'phone', lead.phone)}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    {renderEditableCell(lead, 'statusId', lead.status?.id)}
+                    {renderEditableCell(lead, 'statusId', lead.status)}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     {isAdmin ? 
@@ -1008,7 +1045,7 @@ export function AirtableLeadsView({ isAdmin = false }: AirtableLeadsViewProps) {
                     {renderEditableCell(lead, 'estimatedValue', lead.estimatedValue)}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    {renderEditableCell(lead, 'sourceId', lead.source?.id)}
+                    {renderEditableCell(lead, 'sourceId', lead.source)}
                   </td>
                   {columns.map((column) => (
                     <td key={column.id} className="px-4 py-3 whitespace-nowrap">

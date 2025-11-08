@@ -117,7 +117,9 @@ export default function SalesPersonAnalyticsPage() {
     }
   }
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | null | undefined) => {
+    if (!status) return "bg-gray-100 text-gray-800"
+    
     switch (status.toUpperCase()) {
       case "SCHEDULED":
         return "status-scheduled"
@@ -498,7 +500,7 @@ export default function SalesPersonAnalyticsPage() {
                         <div className="text-xs text-gray-500">{formatDate(meeting.startTime)}</div>
                       </div>
                       <Badge className={getStatusColor(meeting.status)}>
-                        {meeting.status}
+                        {meeting.status || "No Status"}
                       </Badge>
                     </div>
                   ))
@@ -531,7 +533,7 @@ export default function SalesPersonAnalyticsPage() {
                       </div>
                       <div className="text-right">
                         <Badge className={getStatusColor(lead.status)}>
-                          {lead.status.replace("_", " ")}
+                          {lead.status ? lead.status.replace("_", " ") : "No Status"}
                         </Badge>
                         {lead.estimatedValue && (
                           <div className="text-xs text-gray-500 mt-1">
