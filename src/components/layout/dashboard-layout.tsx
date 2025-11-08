@@ -86,7 +86,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main */}
-      <main id="main" className="flex-1 min-w-0" style={{ marginLeft: isMobile ? 0 : sidebarW }}>
+      <main 
+        id="main" 
+        className={cn("flex-1 min-w-0", transition)}
+        style={{ 
+          marginLeft: isMobile ? 0 : sidebarW,
+          width: isMobile ? '100vw' : `calc(100vw - ${sidebarW}px)`,
+          maxWidth: isMobile ? '100vw' : `calc(100vw - ${sidebarW}px)`
+        }}
+      >
         <Header
           isMobile={isMobile}
           sidebarCollapsed={sidebarCollapsed}
@@ -94,7 +102,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           onOpenSidebar={() => setCollapsed(false)}
         />
 
-        <div className="min-h-[calc(100vh-56px)] p-4 sm:p-6 lg:p-8">{children}</div>
+        <div className={cn(
+          "min-h-[calc(100vh-56px)] p-4 sm:p-6 lg:p-8",
+          isMobile ? "w-full max-w-full overflow-x-hidden" : ""
+        )}>
+          {children}
+        </div>
       </main>
     </div>
   )

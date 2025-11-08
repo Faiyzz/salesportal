@@ -2,7 +2,7 @@
 CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'SALES_PERSON');
 
 -- CreateEnum
-CREATE TYPE "LeadStatus" AS ENUM ('NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL_SENT', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST');
+CREATE TYPE "ColumnType" AS ENUM ('TEXT', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT', 'MULTI_SELECT', 'FILE', 'URL', 'EMAIL', 'PHONE');
 
 -- CreateEnum
 CREATE TYPE "MeetingStatus" AS ENUM ('SCHEDULED', 'COMPLETED', 'CANCELLED', 'NO_SHOW');
@@ -88,6 +88,66 @@ CREATE TABLE "meetings" (
 );
 
 -- CreateTable
+CREATE TABLE "lead_sources" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "lead_sources_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "lead_statuses" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "color" TEXT NOT NULL DEFAULT '#6B7280',
+    "description" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "lead_statuses_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "lead_columns" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "key" TEXT NOT NULL,
+    "type" "ColumnType" NOT NULL,
+    "isRequired" BOOLEAN NOT NULL DEFAULT false,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "description" TEXT,
+    "options" JSONB,
+    "minLength" INTEGER,
+    "maxLength" INTEGER,
+    "minValue" DECIMAL(15,2),
+    "maxValue" DECIMAL(15,2),
+    "pattern" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "lead_columns_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "lead_column_values" (
+    "id" TEXT NOT NULL,
+    "leadId" TEXT NOT NULL,
+    "columnId" TEXT NOT NULL,
+    "value" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "lead_column_values_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "leads" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -95,11 +155,8 @@ CREATE TABLE "leads" (
     "phone" TEXT,
     "company" TEXT,
     "jobTitle" TEXT,
-    "status" "LeadStatus" NOT NULL DEFAULT 'NEW',
-    "source" TEXT,
-    "budget" TEXT,
-    "timeline" TEXT,
-    "painPoints" TEXT,
+    "statusId" TEXT,
+    "sourceId" TEXT,
     "meetingWentWell" BOOLEAN,
     "nextSteps" TEXT,
     "followUpDate" TIMESTAMP(3),
@@ -136,6 +193,18 @@ CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 CREATE UNIQUE INDEX "meetings_calendlyEventId_key" ON "meetings"("calendlyEventId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "lead_sources_name_key" ON "lead_sources"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "lead_statuses_name_key" ON "lead_statuses"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "lead_columns_key_key" ON "lead_columns"("key");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "lead_column_values_leadId_columnId_key" ON "lead_column_values"("leadId", "columnId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "leads_meetingId_key" ON "leads"("meetingId");
 
 -- AddForeignKey
@@ -151,7 +220,19 @@ ALTER TABLE "users" ADD CONSTRAINT "users_createdById_fkey" FOREIGN KEY ("create
 ALTER TABLE "meetings" ADD CONSTRAINT "meetings_salesPersonId_fkey" FOREIGN KEY ("salesPersonId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "lead_column_values" ADD CONSTRAINT "lead_column_values_columnId_fkey" FOREIGN KEY ("columnId") REFERENCES "lead_columns"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "lead_column_values" ADD CONSTRAINT "lead_column_values_leadId_fkey" FOREIGN KEY ("leadId") REFERENCES "leads"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "leads" ADD CONSTRAINT "leads_meetingId_fkey" FOREIGN KEY ("meetingId") REFERENCES "meetings"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "leads" ADD CONSTRAINT "leads_salesPersonId_fkey" FOREIGN KEY ("salesPersonId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "leads" ADD CONSTRAINT "leads_sourceId_fkey" FOREIGN KEY ("sourceId") REFERENCES "lead_sources"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "leads" ADD CONSTRAINT "leads_statusId_fkey" FOREIGN KEY ("statusId") REFERENCES "lead_statuses"("id") ON DELETE SET NULL ON UPDATE CASCADE;

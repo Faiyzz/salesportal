@@ -79,8 +79,8 @@ export default function AdminMeetingsPage() {
         return "status-scheduled"
       case "COMPLETED":
         return "status-completed"
-      case "CANCELLED":
-        return "bg-red-100 text-red-800"
+      case "PASSED":
+        return "bg-orange-100 text-orange-800"
       case "NO_SHOW":
         return "bg-gray-100 text-gray-800"
       default:
@@ -190,11 +190,11 @@ const filteredMeetings = meetings.filter((meeting) => {
             Completed ({meetings.filter(m => m.status === "COMPLETED").length})
           </Button>
           <Button
-            variant={filter === "CANCELLED" ? "default" : "outline"}
+            variant={filter === "PASSED" ? "default" : "outline"}
             size="sm"
-            onClick={() => setFilter("CANCELLED")}
+            onClick={() => setFilter("PASSED")}
           >
-            Cancelled ({meetings.filter(m => m.status === "CANCELLED").length})
+            Passed ({meetings.filter(m => m.status === "PASSED").length})
           </Button>
         </div>
 {/* Search Bar */}

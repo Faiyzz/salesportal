@@ -35,6 +35,9 @@ export async function GET(
           }
         },
         leads: {
+          include: {
+            status: true
+          },
           orderBy: {
             createdAt: 'desc'
           }
@@ -53,16 +56,16 @@ export async function GET(
     const totalMeetings = meetings.length
     const scheduledMeetings = meetings.filter(m => m.status === "SCHEDULED").length
     const completedMeetings = meetings.filter(m => m.status === "COMPLETED").length
-    const cancelledMeetings = meetings.filter(m => m.status === "CANCELLED").length
+    const cancelledMeetings = meetings.filter(m => m.status === "PASSED").length
     const noShowMeetings = meetings.filter(m => m.status === "NO_SHOW").length
     const meetingCompletionRate = totalMeetings > 0 ? (completedMeetings / totalMeetings) * 100 : 0
 
     // Lead Analytics
     const totalLeads = leads.length
-    const newLeads = leads.filter(l => l.status === "NEW").length
-    const qualifiedLeads = leads.filter(l => l.status === "QUALIFIED").length
-    const closedWonLeads = leads.filter(l => l.status === "CLOSED_WON").length
-    const closedLostLeads = leads.filter(l => l.status === "CLOSED_LOST").length
+    const newLeads = leads.filter(l => l.status?.name === "NEW").length
+    const qualifiedLeads = leads.filter(l => l.status?.name === "QUALIFIED").length
+    const closedWonLeads = leads.filter(l => l.status?.name === "CLOSED_WON").length
+    const closedLostLeads = leads.filter(l => l.status?.name === "CLOSED_LOST").length
     const conversionRate = totalLeads > 0 ? (closedWonLeads / totalLeads) * 100 : 0
 
     // Revenue Analytics

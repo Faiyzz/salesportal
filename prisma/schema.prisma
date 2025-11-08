@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,22 +7,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// NextAuth.js Models
 model Account {
   id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -46,148 +41,171 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// Application Models
-enum UserRole {
-  ADMIN
-  SALES_PERSON
-}
-
-enum LeadStatus {
-  NEW
-  CONTACTED
-  QUALIFIED
-  PROPOSAL_SENT
-  NEGOTIATION
-  CLOSED_WON
-  CLOSED_LOST
-}
-
-enum MeetingStatus {
-  SCHEDULED
-  COMPLETED
-  CANCELLED
-  NO_SHOW
-}
-
 model User {
-  id                String    @id @default(cuid())
-  email             String    @unique
-  name              String?
-  password          String
-  role              UserRole  @default(SALES_PERSON)
-  calendlyToken     String?   @db.Text
-  calendlyUri       String?   // Calendly user URI for API calls
-  isActive          Boolean   @default(true)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-
-  // NextAuth relations
-  accounts Account[]
-  sessions Session[]
-
-  // Application relations
-  meetings Meeting[]
-  leads    Lead[]
-  createdSalesPeople User[] @relation("AdminToSalesPerson")
-  createdBy          User?  @relation("AdminToSalesPerson", fields: [createdById], references: [id])
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  name               String?
+  password           String
+  role               UserRole  @default(SALES_PERSON)
+  calendlyToken      String?
+  calendlyUri        String?
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
   createdById        String?
+  accounts           Account[]
+  sessions           Session[]
+  leads              Lead[]
+  meetings           Meeting[]
+  createdBy          User?     @relation("AdminToSalesPerson", fields: [createdById], references: [id])
+  createdSalesPeople User[]    @relation("AdminToSalesPerson")
 
   @@map("users")
 }
 
 model Meeting {
-  id                 String        @id @default(cuid())
-  calendlyEventId    String        @unique // Calendly event UUID
-  name               String        // Meeting name/title
-  status             MeetingStatus @default(SCHEDULED)
-  startTime          DateTime
-  endTime            DateTime
-  duration           Int           // Duration in minutes
-  location           String?       // Meeting location (Zoom, Google Meet, etc.)
-  description        String?       @db.Text
-  
-  // Attendee information
-  attendeeName       String
-  attendeeEmail      String
-  attendeePhone      String?
-  attendeeTimezone   String?
-  
-  // Calendly specific data
-  calendlyUri        String        // Event URI from Calendly
-  eventType          String?       // Event type name
-  inviteeUri         String?       // Invitee URI from Calendly
-  
-  // Tracking fields
-  isRescheduled      Boolean       @default(false)
-  rescheduleCount    Int           @default(0)
-  cancelReason       String?
-  
-  // Relations
-  salesPersonId      String
-  salesPerson        User          @relation(fields: [salesPersonId], references: [id])
-  lead               Lead?
-  
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  id               String        @id @default(cuid())
+  calendlyEventId  String        @unique
+  name             String
+  status           MeetingStatus @default(SCHEDULED)
+  startTime        DateTime
+  endTime          DateTime
+  duration         Int
+  location         String?
+  description      String?
+  attendeeName     String
+  attendeeEmail    String
+  attendeePhone    String?
+  attendeeTimezone String?
+  calendlyUri      String
+  eventType        String?
+  inviteeUri       String?
+  isRescheduled    Boolean       @default(false)
+  rescheduleCount  Int           @default(0)
+  cancelReason     String?
+  salesPersonId    String
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  lead             Lead?
+  salesPerson      User          @relation(fields: [salesPersonId], references: [id])
 
   @@map("meetings")
 }
 
 model LeadSource {
   id          String   @id @default(cuid())
-  name        String   @unique // e.g., "Instagram", "LinkedIn", "Website", "Referral"
-  description String?  // Optional description
+  name        String   @unique
+  description String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
-  // Relations
   leads       Lead[]
-  
+
   @@map("lead_sources")
 }
 
+model LeadStatus {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  color       String   @default("#6B7280")
+  description String?
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+  leads       Lead[]
+
+  @@map("lead_statuses")
+}
+
+model LeadColumn {
+  id          String            @id @default(cuid())
+  name        String
+  key         String            @unique
+  type        ColumnType
+  isRequired  Boolean           @default(false)
+  isActive    Boolean           @default(true)
+  sortOrder   Int               @default(0)
+  description String?
+  options     Json?
+  minLength   Int?
+  maxLength   Int?
+  minValue    Decimal?          @db.Decimal(15, 2)
+  maxValue    Decimal?          @db.Decimal(15, 2)
+  pattern     String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  leadValues  LeadColumnValue[]
+
+  @@map("lead_columns")
+}
+
+model LeadColumnValue {
+  id        String     @id @default(cuid())
+  leadId    String
+  columnId  String
+  value     Json?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  column    LeadColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  lead      Lead       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@unique([leadId, columnId])
+  @@map("lead_column_values")
+}
+
 model Lead {
-  id                String     @id @default(cuid())
-  
-  // Basic information (auto-populated from meeting)
+  id                String            @id @default(cuid())
   name              String
   email             String
   phone             String?
   company           String?
   jobTitle          String?
-  
-  // Lead qualification (manual entry)
-  status            LeadStatus @default(NEW)
-  sourceId          String?    // Reference to LeadSource
-  source            LeadSource? @relation(fields: [sourceId], references: [id])
-  budget            String?    // Budget range
-  timeline          String?    // Decision timeline
-  painPoints        String?    @db.Text // What problems they're trying to solve
-  
-  // Meeting outcome (manual entry by sales person)
-  meetingWentWell   Boolean?   // Did the meeting go well?
-  nextSteps         String?    @db.Text // What are the next steps?
-  followUpDate      DateTime?  // When to follow up
-  notes             String?    @db.Text // Additional notes
-  
-  // Scoring and priority
-  leadScore         Int?       @default(0) // Lead score out of 100
-  priority          String?    @default("MEDIUM") // HIGH, MEDIUM, LOW
-  
-  // Deal information
-  estimatedValue    Decimal?   @db.Decimal(10, 2)
-  probability       Int?       // Probability of closing (0-100%)
+  statusId          String?
+  sourceId          String?
+  meetingWentWell   Boolean?
+  nextSteps         String?
+  followUpDate      DateTime?
+  notes             String?
+  leadScore         Int?              @default(0)
+  priority          String?           @default("MEDIUM")
+  estimatedValue    Decimal?          @db.Decimal(10, 2)
+  probability       Int?
   expectedCloseDate DateTime?
-  
-  // Relations
-  meetingId         String?    @unique
-  meeting           Meeting?   @relation(fields: [meetingId], references: [id])
+  meetingId         String?           @unique
   salesPersonId     String
-  salesPerson       User       @relation(fields: [salesPersonId], references: [id])
-  
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  columnValues      LeadColumnValue[]
+  meeting           Meeting?          @relation(fields: [meetingId], references: [id])
+  salesPerson       User              @relation(fields: [salesPersonId], references: [id])
+  source            LeadSource?       @relation(fields: [sourceId], references: [id])
+  status            LeadStatus?       @relation(fields: [statusId], references: [id])
 
   @@map("leads")
+}
+
+enum UserRole {
+  ADMIN
+  SALES_PERSON
+}
+
+enum ColumnType {
+  TEXT
+  NUMBER
+  DATE
+  BOOLEAN
+  SELECT
+  MULTI_SELECT
+  FILE
+  URL
+  EMAIL
+  PHONE
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  COMPLETED
+  NO_SHOW
+  PASSED
 }

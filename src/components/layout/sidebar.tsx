@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
-import { LayoutDashboard, Calendar, Users, Target, LogOut, Building2, Bug, Menu, X, ChevronLeft, ChevronRight, BarChart3, Tag } from "lucide-react"
+import { LayoutDashboard, Calendar, Users, Target, LogOut, Building2, Bug, Menu, X, ChevronLeft, ChevronRight, BarChart3, Tag, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
@@ -40,6 +40,7 @@ export function Sidebar({ className, isCollapsed = false, onToggle }: SidebarPro
     { label: "Sales People", icon: Users, href: "/admin/sales-people" },
     { label: "Leads", icon: Target, href: "/admin/leads" },
     { label: "Lead Sources", icon: Tag, href: "/admin/lead-sources" },
+    { label: "Leads Config", icon: Settings, href: "/admin/leads-config" },
     { label: "Analytics", icon: BarChart3, href: "/admin/analytics" },
   ]
   const salesRoutes = [

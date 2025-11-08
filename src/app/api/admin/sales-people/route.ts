@@ -92,6 +92,12 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
+    // Get creator user if exists
+    const creator = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { id: true }
+    })
+
     // Create user
     const newUser = await prisma.user.create({
       data: {
@@ -101,7 +107,7 @@ export async function POST(request: NextRequest) {
         role: "SALES_PERSON",
         calendlyToken,
         calendlyUri,
-        createdById: session.user.id,
+        createdById: creator?.id || null,
         isActive: true
       },
       select: {

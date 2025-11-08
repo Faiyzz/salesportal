@@ -80,7 +80,7 @@ export default function SignIn() {
             className="w-full"
           >
             <Card className="mx-auto w-full max-w-md overflow-hidden rounded-3xl border border-white/15 bg-white/10 shadow-2xl backdrop-blur-2xl supports-[backdrop-filter]:bg-white/10">
-           
+
               <CardHeader className="text-center">
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
@@ -115,7 +115,7 @@ export default function SignIn() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        className="peer h-12 rounded-2xl border-white/20 bg-white/10 text-white placeholder:text-white/60 backdrop-blur-xl focus-visible:ring-2 focus-visible:ring-white/40"
+                        className="peer h-12 rounded-2xl border-white/20 bg-white/10 text-black placeholder:text-black/60 backdrop-blur-xl focus-visible:ring-2 focus-visible:ring-black/40"
                       />
                       {/* Focus glow */}
                       <span className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-white/0 transition peer-focus:ring-white/30" />
@@ -137,8 +137,9 @@ export default function SignIn() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        className="peer h-12 rounded-2xl border-white/20 bg-white/10 text-white placeholder:text-white/60 backdrop-blur-xl focus-visible:ring-2 focus-visible:ring-white/40"
+                        className="peer h-12 rounded-2xl border-white/20 bg-white/10 text-black placeholder:text-black/60 backdrop-blur-xl focus-visible:ring-2 focus-visible:ring-black/40"
                       />
+
                       <span className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-white/0 transition peer-focus:ring-white/30" />
                     </div>
                   </motion.div>

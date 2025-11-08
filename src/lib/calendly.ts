@@ -1,3 +1,5 @@
+import { PrismaClient, MeetingStatus } from '@prisma/client'
+
 interface CalendlyEvent {
   uri: string
   name: string
@@ -199,7 +201,7 @@ export async function syncCalendlyMeetings(userId: string, calendlyToken: string
       const meetingData = {
         calendlyEventId: event.uri,
         name: event.name,
-        status: (event.status === 'active' ? 'SCHEDULED' : 'CANCELLED') as 'SCHEDULED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW',
+        status: (event.status === 'active' ? MeetingStatus.SCHEDULED : MeetingStatus.COMPLETED),
         startTime: new Date(event.start_time),
         endTime: new Date(event.end_time),
         duration: Math.round((new Date(event.end_time).getTime() - new Date(event.start_time).getTime()) / (1000 * 60)),
@@ -229,11 +231,16 @@ export async function syncCalendlyMeetings(userId: string, calendlyToken: string
 
         // Auto-create lead from meeting data (only if we have valid attendee info)
         if (attendeeEmail !== 'unknown@example.com') {
+          // Find the "NEW" status
+          const newStatus = await prisma.leadStatus.findFirst({
+            where: { name: 'NEW', isActive: true }
+          })
+
           await prisma.lead.create({
             data: {
               name: attendeeName,
               email: attendeeEmail,
-              status: 'NEW',
+              statusId: newStatus?.id || null,
               meetingId: newMeeting.id,
               salesPersonId: userId,
             }

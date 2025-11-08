@@ -77,7 +77,9 @@ export async function GET(request: NextRequest) {
         where: {
           salesPersonId: userId,
           status: {
-            in: ["QUALIFIED", "PROPOSAL_SENT", "NEGOTIATION", "CLOSED_WON"]
+            name: {
+              in: ["QUALIFIED", "PROPOSAL_SENT", "NEGOTIATION", "CLOSED_WON"]
+            }
           }
         }
       }),

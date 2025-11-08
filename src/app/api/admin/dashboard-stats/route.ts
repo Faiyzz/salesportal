@@ -81,7 +81,9 @@ export async function GET(request: NextRequest) {
       prisma.lead.count({
         where: {
           status: {
-            in: ["QUALIFIED", "PROPOSAL_SENT", "NEGOTIATION", "CLOSED_WON"]
+            name: {
+              in: ["QUALIFIED", "PROPOSAL_SENT", "NEGOTIATION", "CLOSED_WON"]
+            }
           }
         }
       })
