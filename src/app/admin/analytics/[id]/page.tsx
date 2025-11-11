@@ -74,7 +74,7 @@ interface DetailedAnalytics {
     id: string
     name: string
     company: string | null
-    status: string
+    status: string | null
     estimatedValue: number | null
     createdAt: string
   }>
@@ -117,10 +117,14 @@ export default function SalesPersonAnalyticsPage() {
     }
   }
 
-  const getStatusColor = (status: string | null | undefined) => {
+  const getStatusColor = (status: string | null | undefined | any) => {
     if (!status) return "bg-gray-100 text-gray-800"
     
-    switch (status.toUpperCase()) {
+    // Handle case where status might be an object with a name property
+    const statusString = typeof status === 'string' ? status : status?.name || ''
+    if (!statusString) return "bg-gray-100 text-gray-800"
+    
+    switch (statusString.toUpperCase()) {
       case "SCHEDULED":
         return "status-scheduled"
       case "COMPLETED":

@@ -38,7 +38,7 @@ export default function SignIn() {
       } else {
         toast.success("Signed in successfully!")
         const session = await getSession()
-        if (session?.user?.role === "ADMIN") {
+        if (session?.user?.role === "ADMIN" || session?.user?.role === "SALES_MANAGER") {
           router.push("/admin")
         } else {
           router.push("/dashboard")

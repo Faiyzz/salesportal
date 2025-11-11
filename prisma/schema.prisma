@@ -59,6 +59,12 @@ model User {
   meetings           Meeting[]
   createdBy          User?     @relation("AdminToSalesPerson", fields: [createdById], references: [id])
   createdSalesPeople User[]    @relation("AdminToSalesPerson")
+  
+  // Commission relations
+  commissions         Commission[]      @relation("UserCommissions")
+  commissionsCreated  Commission[]      @relation("CommissionsCreated")
+  commissionHistoryChanges CommissionHistory[] @relation("CommissionHistoryChanges")
+  commissionSlabs     CommissionSlab[]
 
   @@map("users")
 }
@@ -181,13 +187,69 @@ model Lead {
   salesPerson       User              @relation(fields: [salesPersonId], references: [id])
   source            LeadSource?       @relation(fields: [sourceId], references: [id])
   status            LeadStatus?       @relation(fields: [statusId], references: [id])
+  commission        Commission?
 
   @@map("leads")
+}
+
+model CommissionSlab {
+  id          String  @id @default(cuid())
+  userId      String  // Sales person or manager this slab belongs to
+  minAmount   Decimal @db.Decimal(10, 2) // Minimum deal value for this slab
+  maxAmount   Decimal? @db.Decimal(10, 2) // Maximum deal value (null for unlimited)
+  rate        Decimal @db.Decimal(5, 2) // Commission percentage for this slab
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("commission_slabs")
+}
+
+model Commission {
+  id               String   @id @default(cuid())
+  leadId           String   @unique
+  userId           String   // Sales person or manager who gets the commission
+  commissionAmount Decimal  @db.Decimal(10, 2)
+  appliedRate      Decimal  @db.Decimal(5, 2) // Rate that was applied based on slab
+  slabId           String?  // Which slab was used for calculation
+  notes            String?  // Optional notes about the commission
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  createdById      String   // Admin who set the commission
+
+  // Relations
+  lead      Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user      User @relation("UserCommissions", fields: [userId], references: [id])
+  createdBy User @relation("CommissionsCreated", fields: [createdById], references: [id])
+  history   CommissionHistory[] 
+
+  @@map("commissions")
+}
+
+model CommissionHistory {
+  id                  String   @id @default(cuid())
+  commissionId        String
+  previousAmount      Decimal? @db.Decimal(10, 2)
+  newAmount           Decimal  @db.Decimal(10, 2)
+  previousRate        Decimal? @db.Decimal(5, 2)
+  newRate             Decimal? @db.Decimal(5, 2)
+  changeReason        String?  // Why the commission was changed
+  changedAt           DateTime @default(now())
+  changedById         String   // Admin who made the change
+
+  // Relations
+  commission Commission @relation(fields: [commissionId], references: [id], onDelete: Cascade)
+  changedBy  User       @relation("CommissionHistoryChanges", fields: [changedById], references: [id])
+
+  @@map("commission_history")
 }
 
 enum UserRole {
   ADMIN
   SALES_PERSON
+  SALES_MANAGER
 }
 
 enum ColumnType {

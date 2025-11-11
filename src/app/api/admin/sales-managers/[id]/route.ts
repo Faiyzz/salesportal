@@ -20,7 +20,7 @@ export async function PATCH(
     const updatedUser = await prisma.user.update({
       where: {
         id,
-        role: "SALES_PERSON" // Ensure we can only update sales people
+        role: "SALES_MANAGER" as any // Ensure we can only update sales managers
       },
       data: {
         isActive
@@ -35,7 +35,7 @@ export async function PATCH(
 
     return NextResponse.json(updatedUser)
   } catch (error) {
-    console.error("Error updating sales person:", error)
+    console.error("Error updating sales manager:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

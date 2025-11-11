@@ -11,7 +11,7 @@ export async function GET(
     
     const session = await auth()
     
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SALES_MANAGER")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -109,7 +109,7 @@ export async function GET(
       id: lead.id,
       name: lead.name,
       company: lead.company,
-      status: lead.status,
+      status: lead.status?.name || null,
       estimatedValue: lead.estimatedValue ? Number(lead.estimatedValue) : null,
       createdAt: lead.createdAt.toISOString()
     }))

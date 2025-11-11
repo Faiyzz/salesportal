@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { CalendlyAPI } from "@/lib/calendly"
+import { UserRole } from "@prisma/client"
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,10 +13,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const salesPeople = await prisma.user.findMany({
-      where: {
-        role: "SALES_PERSON"
-      },
+    const allUsers = await prisma.user.findMany({
       select: {
         id: true,
         name: true,
@@ -24,6 +22,7 @@ export async function GET(request: NextRequest) {
         calendlyUri: true,
         isActive: true,
         createdAt: true,
+        role: true,
         _count: {
           select: {
             meetings: true,
@@ -36,9 +35,12 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json(salesPeople)
+    // Filter for sales managers in JavaScript
+    const salesManagers = allUsers.filter((user: any) => user.role === "SALES_MANAGER")
+
+    return NextResponse.json(salesManagers)
   } catch (error) {
-    console.error("Error fetching sales people:", error)
+    console.error("Error fetching sales managers:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -50,36 +52,18 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth()
     
-    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "SALES_MANAGER")) {
+    if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { name, email, password, calendlyToken, commissionSlabs } = await request.json()
+    const { name, email, password, calendlyToken } = await request.json()
 
     // Validate required fields
-    if (!name || !email || !password || !calendlyToken) {
+    if (!name || !email || !password) {
       return NextResponse.json(
-        { error: "All fields are required" },
+        { error: "Name, email, and password are required" },
         { status: 400 }
       )
-    }
-
-    // Validate commission slabs
-    if (!commissionSlabs || !Array.isArray(commissionSlabs) || commissionSlabs.length === 0) {
-      return NextResponse.json(
-        { error: "At least one commission slab is required" },
-        { status: 400 }
-      )
-    }
-
-    // Validate each slab
-    for (const slab of commissionSlabs) {
-      if (!slab.minAmount || !slab.rate || parseFloat(slab.rate) < 0) {
-        return NextResponse.json(
-          { error: "Invalid commission slab data" },
-          { status: 400 }
-        )
-      }
     }
 
     // Check if user already exists
@@ -94,17 +78,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate Calendly token and get user info
+    // Validate Calendly token and get user info (optional)
     let calendlyUri = null
-    try {
-      const calendly = new CalendlyAPI(calendlyToken)
-      const calendlyUser = await calendly.getCurrentUser()
-      calendlyUri = calendlyUser.uri
-    } catch (error) {
-      return NextResponse.json(
-        { error: "Invalid Calendly token" },
-        { status: 400 }
-      )
+    if (calendlyToken) {
+      try {
+        const calendly = new CalendlyAPI(calendlyToken)
+        const calendlyUser = await calendly.getCurrentUser()
+        calendlyUri = calendlyUser.uri
+      } catch (error) {
+        console.error("Calendly token validation error:", error)
+        return NextResponse.json(
+          { error: `Invalid Calendly token: ${error instanceof Error ? error.message : 'Unknown error'}` },
+          { status: 400 }
+        )
+      }
     }
 
     // Hash password
@@ -116,24 +103,17 @@ export async function POST(request: NextRequest) {
       select: { id: true }
     })
 
-    // Create user with commission slabs
+    // Create user
     const newUser = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
-        role: "SALES_PERSON",
+        role: "SALES_MANAGER" as any,
         calendlyToken,
         calendlyUri,
         createdById: creator?.id || null,
-        isActive: true,
-        commissionSlabs: {
-          create: commissionSlabs.map((slab: any) => ({
-            minAmount: parseFloat(slab.minAmount),
-            maxAmount: slab.maxAmount ? parseFloat(slab.maxAmount) : null,
-            rate: parseFloat(slab.rate)
-          }))
-        }
+        isActive: true
       },
       select: {
         id: true,
@@ -143,14 +123,6 @@ export async function POST(request: NextRequest) {
         calendlyUri: true,
         isActive: true,
         createdAt: true,
-        commissionSlabs: {
-          select: {
-            id: true,
-            minAmount: true,
-            maxAmount: true,
-            rate: true
-          }
-        },
         _count: {
           select: {
             meetings: true,
@@ -162,7 +134,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(newUser, { status: 201 })
   } catch (error) {
-    console.error("Error creating sales person:", error)
+    console.error("Error creating sales manager:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

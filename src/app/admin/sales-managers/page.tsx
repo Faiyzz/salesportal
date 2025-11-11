@@ -13,7 +13,7 @@ import { toast } from "sonner"
 import { formatDate } from "@/lib/utils"
 import Link from "next/link"
 
-interface SalesPerson {
+interface SalesManager {
   id: string
   name: string | null
   email: string
@@ -27,74 +27,41 @@ interface SalesPerson {
   }
 }
 
-interface CommissionSlab {
-  minAmount: string
-  maxAmount: string
-  rate: string
-}
-
-interface NewSalesPersonForm {
+interface NewSalesManagerForm {
   name: string
   email: string
   password: string
   calendlyToken: string
-  commissionSlabs: CommissionSlab[]
 }
 
-export default function SalesPeoplePage() {
-  const [salesPeople, setSalesPeople] = useState<SalesPerson[]>([])
+export default function SalesManagersPage() {
+  const [salesManagers, setSalesManagers] = useState<SalesManager[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
-  const [formData, setFormData] = useState<NewSalesPersonForm>({
+  const [formData, setFormData] = useState<NewSalesManagerForm>({
     name: "",
     email: "",
     password: "",
-    calendlyToken: "",
-    commissionSlabs: [
-      { minAmount: "0", maxAmount: "500", rate: "2" },
-      { minAmount: "500", maxAmount: "", rate: "5" }
-    ]
+    calendlyToken: ""
   })
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    fetchSalesPeople()
+    fetchSalesManagers()
   }, [])
 
-  const updateCommissionSlab = (index: number, field: keyof CommissionSlab, value: string) => {
-    const newSlabs = [...formData.commissionSlabs]
-    newSlabs[index] = { ...newSlabs[index], [field]: value }
-    setFormData({ ...formData, commissionSlabs: newSlabs })
-  }
-
-  const addCommissionSlab = () => {
-    const newSlabs = [...formData.commissionSlabs]
-    const lastSlab = newSlabs[newSlabs.length - 1]
-    const newMinAmount = lastSlab?.maxAmount || "0"
-    
-    newSlabs.push({ minAmount: newMinAmount, maxAmount: "", rate: "0" })
-    setFormData({ ...formData, commissionSlabs: newSlabs })
-  }
-
-  const removeCommissionSlab = (index: number) => {
-    if (formData.commissionSlabs.length > 1) {
-      const newSlabs = formData.commissionSlabs.filter((_, i) => i !== index)
-      setFormData({ ...formData, commissionSlabs: newSlabs })
-    }
-  }
-
-  const fetchSalesPeople = async () => {
+  const fetchSalesManagers = async () => {
     try {
-      const response = await fetch("/api/admin/sales-people")
+      const response = await fetch("/api/admin/sales-managers")
       if (response.ok) {
         const data = await response.json()
-        setSalesPeople(data)
+        setSalesManagers(data)
       } else {
-        toast.error("Failed to fetch sales people")
+        toast.error("Failed to fetch sales managers")
       }
     } catch (error) {
-      toast.error("Error fetching sales people")
+      toast.error("Error fetching sales managers")
     } finally {
       setLoading(false)
     }
@@ -105,7 +72,7 @@ export default function SalesPeoplePage() {
     setSubmitting(true)
 
     try {
-      const response = await fetch("/api/admin/sales-people", {
+      const response = await fetch("/api/admin/sales-managers", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -114,25 +81,16 @@ export default function SalesPeoplePage() {
       })
 
       if (response.ok) {
-        toast.success("Sales person added successfully!")
-        setFormData({ 
-          name: "", 
-          email: "", 
-          password: "", 
-          calendlyToken: "",
-          commissionSlabs: [
-            { minAmount: "0", maxAmount: "500", rate: "2" },
-            { minAmount: "500", maxAmount: "", rate: "5" }
-          ]
-        })
+        toast.success("Sales manager added successfully!")
+        setFormData({ name: "", email: "", password: "", calendlyToken: "" })
         setShowAddForm(false)
-        fetchSalesPeople()
+        fetchSalesManagers()
       } else {
         const error = await response.json()
-        toast.error(error.message || "Failed to add sales person")
+        toast.error(error.error || error.message || "Failed to add sales manager")
       }
     } catch (error) {
-      toast.error("Error adding sales person")
+      toast.error("Error adding sales manager")
     } finally {
       setSubmitting(false)
     }
@@ -140,7 +98,7 @@ export default function SalesPeoplePage() {
 
   const toggleStatus = async (id: string, currentStatus: boolean) => {
     try {
-      const response = await fetch(`/api/admin/sales-people/${id}`, {
+      const response = await fetch(`/api/admin/sales-managers/${id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json"
@@ -149,8 +107,8 @@ export default function SalesPeoplePage() {
       })
 
       if (response.ok) {
-        toast.success(`Sales person ${!currentStatus ? "activated" : "deactivated"}`)
-        fetchSalesPeople()
+        toast.success(`Sales manager ${!currentStatus ? "activated" : "deactivated"}`)
+        fetchSalesManagers()
       } else {
         toast.error("Failed to update status")
       }
@@ -174,7 +132,7 @@ export default function SalesPeoplePage() {
       <DashboardLayout>
         <div className="flex-1 space-y-4 p-8 pt-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-3xl font-bold tracking-tight">Sales People</h2>
+            <h2 className="text-3xl font-bold tracking-tight">Sales Managers</h2>
           </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
@@ -201,20 +159,20 @@ export default function SalesPeoplePage() {
     <DashboardLayout>
       <div className="flex-1 space-y-4 p-8 pt-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold tracking-tight">Sales People</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Sales Managers</h2>
           <Button onClick={() => setShowAddForm(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Add Sales Person
+            Add Sales Manager
           </Button>
         </div>
 
-        {/* Add Sales Person Form */}
+        {/* Add Sales Manager Form */}
         {showAddForm && (
           <Card>
             <CardHeader>
-              <CardTitle>Add New Sales Person</CardTitle>
+              <CardTitle>Add New Sales Manager</CardTitle>
               <CardDescription>
-                Create a new sales person account with Calendly integration
+                Create a new sales manager account with Calendly integration
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -252,93 +210,15 @@ export default function SalesPeoplePage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="calendlyToken">Calendly Personal Access Token</Label>
+                    <Label htmlFor="calendlyToken">Calendly Personal Access Token (Optional)</Label>
                     <Input
                       id="calendlyToken"
                       value={formData.calendlyToken}
                       onChange={(e) => setFormData({ ...formData, calendlyToken: e.target.value })}
-                      placeholder="Enter Calendly token"
-                      required
+                      placeholder="Enter Calendly token (optional)"
                     />
                   </div>
                 </div>
-
-                {/* Commission Slabs Section */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-base font-medium">Commission Slabs</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Set different commission rates based on deal value ranges
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={addCommissionSlab}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Slab
-                    </Button>
-                  </div>
-
-                  <div className="space-y-3">
-                    {formData.commissionSlabs.map((slab, index) => (
-                      <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
-                        <div className="flex-1 grid grid-cols-3 gap-3">
-                          <div className="space-y-1">
-                            <Label className="text-xs">Min Amount ($)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={slab.minAmount}
-                              onChange={(e) => updateCommissionSlab(index, 'minAmount', e.target.value)}
-                              placeholder="0"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Max Amount ($)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={slab.maxAmount}
-                              onChange={(e) => updateCommissionSlab(index, 'maxAmount', e.target.value)}
-                              placeholder="Unlimited"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Rate (%)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={slab.rate}
-                              onChange={(e) => updateCommissionSlab(index, 'rate', e.target.value)}
-                              placeholder="0"
-                            />
-                          </div>
-                        </div>
-                        {formData.commissionSlabs.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removeCommissionSlab(index)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            Remove
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="text-xs text-muted-foreground">
-                    <p>• Leave Max Amount empty for unlimited upper range</p>
-                    <p>• Example: $0-$500 at 2%, $500+ at 5%</p>
-                  </div>
-                </div>
-
                 <div className="flex justify-end space-x-2">
                   <Button
                     type="button"
@@ -348,7 +228,7 @@ export default function SalesPeoplePage() {
                     Cancel
                   </Button>
                   <Button type="submit" disabled={submitting}>
-                    {submitting ? "Adding..." : "Add Sales Person"}
+                    {submitting ? "Adding..." : "Add Sales Manager"}
                   </Button>
                 </div>
               </form>
@@ -356,7 +236,7 @@ export default function SalesPeoplePage() {
           </Card>
         )}
 
-        {/* Sales People Table */}
+        {/* Sales Managers Table */}
         <div className="bg-white rounded-lg overflow-hidden">
           <table className="w-full sales-table">
             <thead className="bg-gray-50">
@@ -382,7 +262,7 @@ export default function SalesPeoplePage() {
               </tr>
             </thead>
          <tbody className="bg-white divide-y divide-gray-200">
-  {salesPeople.map((person) => (
+  {salesManagers.map((person) => (
     <Fragment key={person.id}>
       <tr
         className="hover:bg-gray-50 cursor-pointer"
@@ -526,16 +406,16 @@ export default function SalesPeoplePage() {
           </table>
         </div>
 
-        {salesPeople.length === 0 && (
+        {salesManagers.length === 0 && (
           <div className="bg-white rounded-lg p-12 text-center">
             <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Sales People</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Sales Managers</h3>
             <p className="text-gray-600 mb-4">
-              Get started by adding your first sales person to the team.
+              Get started by adding your first sales manager to the team.
             </p>
             <Button onClick={() => setShowAddForm(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Add Sales Person
+              Add Sales Manager
             </Button>
           </div>
         )}

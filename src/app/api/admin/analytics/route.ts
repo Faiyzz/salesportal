@@ -8,7 +8,7 @@ export async function GET() {
     const session = await auth()
     console.log("Session:", session?.user?.email, session?.user?.role)
     
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SALES_MANAGER")) {
       console.log("Unauthorized access to main analytics")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }

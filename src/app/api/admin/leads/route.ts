@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth()
     
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "SALES_MANAGER")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth()
     
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "SALES_MANAGER")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -151,7 +151,9 @@ export async function POST(request: NextRequest) {
       const salesPerson = await prisma.user.findFirst({
         where: {
           id: salesPersonId,
-          role: "SALES_PERSON",
+          role: {
+            in: ["SALES_PERSON", "SALES_MANAGER"]
+          },
           isActive: true
         }
       })
@@ -258,7 +260,7 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await auth()
     
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "SALES_MANAGER")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -314,7 +316,9 @@ export async function PUT(request: NextRequest) {
       const salesPerson = await prisma.user.findFirst({
         where: {
           id: salesPersonId,
-          role: "SALES_PERSON",
+          role: {
+            in: ["SALES_PERSON", "SALES_MANAGER"]
+          },
           isActive: true
         }
       })

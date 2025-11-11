@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
-import { LayoutDashboard, Calendar, Users, Target, LogOut, Building2, Bug, Menu, X, ChevronLeft, ChevronRight, BarChart3, Tag, Settings } from "lucide-react"
+import { LayoutDashboard, Calendar, Users, Target, LogOut, Building2, Bug, Menu, X, ChevronLeft, ChevronRight, BarChart3, Tag, Settings, DollarSign, Percent } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
@@ -18,6 +18,8 @@ export function Sidebar({ className, isCollapsed = false, onToggle }: SidebarPro
   const pathname = usePathname()
   const { data: session } = useSession()
   const isAdmin = session?.user?.role === "ADMIN"
+  const isSalesManager = session?.user?.role === "SALES_MANAGER"
+  const isAdminOrSalesManager = isAdmin || isSalesManager
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
@@ -36,19 +38,24 @@ export function Sidebar({ className, isCollapsed = false, onToggle }: SidebarPro
   ]
   const adminRoutes = [
     { label: "Dashboard", icon: LayoutDashboard, href: "/admin" },
-    { label: "Meetings", icon: Calendar, href: "/admin/meetings" },
     { label: "Sales People", icon: Users, href: "/admin/sales-people" },
+    { label: "Sales Managers", icon: Users, href: "/admin/sales-managers" },
+    { label: "Meetings", icon: Calendar, href: "/admin/meetings" },
     { label: "Leads", icon: Target, href: "/admin/leads" },
     { label: "Lead Sources", icon: Tag, href: "/admin/lead-sources" },
     { label: "Leads Config", icon: Settings, href: "/admin/leads-config" },
     { label: "Analytics", icon: BarChart3, href: "/admin/analytics" },
+    { label: "Commissions", icon: Percent, href: "/admin/commissions" },
+    { label: "Total Revenue", icon: DollarSign, href: "/admin/total-revenue" },
   ]
+  const salesManagerRoutes = adminRoutes.filter(r => r.href !== "/admin/total-revenue")
   const salesRoutes = [
     { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
     { label: "My Meetings", icon: Calendar, href: "/dashboard/meetings" },
     { label: "My Leads", icon: Target, href: "/dashboard/leads" },
   ]
-  const routes = isAdmin ? adminRoutes : salesRoutes
+  
+  const routes = isAdmin ? adminRoutes : (isSalesManager ? salesManagerRoutes : salesRoutes)
 
   return (
     <aside className={cn(
@@ -61,7 +68,7 @@ export function Sidebar({ className, isCollapsed = false, onToggle }: SidebarPro
 
       <div className={cn("px-4 pb-6", isCollapsed && "px-2")}>
         <Link 
-          href={isAdmin ? "/admin" : "/dashboard"} 
+          href={isAdminOrSalesManager ? "/admin" : "/dashboard"} 
           className={cn(
             "flex items-center mb-10 group",
             isCollapsed ? "justify-center pl-0" : "pl-2"

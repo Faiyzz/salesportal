@@ -7,14 +7,16 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth()
     
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "SALES_MANAGER")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get all active sales people with Calendly tokens
+    // Get all active sales people and managers with Calendly tokens
     const salesPeople = await prisma.user.findMany({
       where: {
-        role: "SALES_PERSON",
+        role: {
+          in: ["SALES_PERSON", "SALES_MANAGER"]
+        },
         isActive: true,
         calendlyToken: {
           not: null
