@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { 
@@ -21,6 +22,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -32,7 +34,8 @@ import {
   Trash2,
   History,
   Calendar,
-  TrendingUp
+  TrendingUp,
+  Plus
 } from "lucide-react"
 
 interface CommissionHistoryEntry {
@@ -113,6 +116,9 @@ export default function CommissionDetailsPage() {
   const [saving, setSaving] = useState<{[key: string]: boolean}>({})
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
+  const [slabEditDialogOpen, setSlabEditDialogOpen] = useState(false)
+  const [editingSlabs, setEditingSlabs] = useState<CommissionSlab[]>([])
+  const [savingSlabs, setSavingSlabs] = useState(false)
 
   useEffect(() => {
     if (userId) {
@@ -258,31 +264,112 @@ export default function CommissionDetailsPage() {
     })
   }
 
-  const handleOverrideCommission = (lead: Lead) => {
-    // For now, just show a toast - we can implement override functionality later
-    toast.info("Commission override functionality coming soon. Currently showing auto-calculated commissions based on slabs.")
+  const handleEditSlabs = () => {
+    if (data?.user.commissionSlabs) {
+      setEditingSlabs([...data.user.commissionSlabs])
+      setSlabEditDialogOpen(true)
+    }
+  }
+
+  const updateSlabField = (index: number, field: keyof CommissionSlab, value: string) => {
+    const newSlabs = [...editingSlabs]
+    if (field === 'rate' || field === 'minAmount') {
+      newSlabs[index] = { ...newSlabs[index], [field]: value === '' ? 0 : Number(value) }
+    } else if (field === 'maxAmount') {
+      newSlabs[index] = { ...newSlabs[index], [field]: value === '' ? null : Number(value) }
+    } else {
+      newSlabs[index] = { ...newSlabs[index], [field]: value }
+    }
+    setEditingSlabs(newSlabs)
+  }
+
+  const addSlab = () => {
+    const lastSlab = editingSlabs[editingSlabs.length - 1]
+    const newMinAmount = lastSlab?.maxAmount || 0
+    
+    const newSlab: CommissionSlab = {
+      id: `temp-${Date.now()}`, // Temporary ID for new slabs
+      minAmount: newMinAmount,
+      maxAmount: null,
+      rate: 0
+    }
+    
+    setEditingSlabs([...editingSlabs, newSlab])
+  }
+
+  const removeSlab = (index: number) => {
+    if (editingSlabs.length > 1) {
+      const newSlabs = editingSlabs.filter((_, i) => i !== index)
+      setEditingSlabs(newSlabs)
+    }
+  }
+
+  const handleSaveSlabs = async () => {
+    // Validate slabs
+    for (const slab of editingSlabs) {
+      if (slab.rate < 0 || slab.minAmount < 0) {
+        toast.error("Rates and amounts must be positive")
+        return
+      }
+    }
+
+    try {
+      setSavingSlabs(true)
+      
+      const response = await fetch(`/api/admin/commissions/${userId}/slabs`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          slabs: editingSlabs.map(slab => ({
+            minAmount: slab.minAmount,
+            maxAmount: slab.maxAmount,
+            rate: slab.rate
+          }))
+        })
+      })
+
+      if (response.ok) {
+        toast.success("Commission slabs updated successfully")
+        setSlabEditDialogOpen(false)
+        fetchCommissionDetails() // Refresh to show new calculations
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Failed to update commission slabs")
+      }
+    } catch (error) {
+      console.error("Error updating commission slabs:", error)
+      toast.error("Error updating commission slabs")
+    } finally {
+      setSavingSlabs(false)
+    }
   }
 
   const handleDeleteCommission = async (leadId: string) => {
-    if (!confirm("Are you sure you want to delete this commission?")) {
+    if (!confirm("Are you sure you want to remove the manual commission override? This will revert to auto-calculated commission.")) {
       return
     }
 
     try {
+      setSaving(prev => ({ ...prev, [leadId]: true }))
+      
       const response = await fetch(`/api/admin/commissions/${userId}/leads/${leadId}`, {
         method: 'DELETE'
       })
 
       if (response.ok) {
-        toast.success("Commission deleted successfully")
+        toast.success("Manual commission override removed successfully")
         fetchCommissionDetails()
       } else {
         const error = await response.json()
-        toast.error(error.error || "Failed to delete commission")
+        toast.error(error.error || "Failed to remove commission override")
       }
     } catch (error) {
-      console.error("Error deleting commission:", error)
-      toast.error("Error deleting commission")
+      console.error("Error removing commission override:", error)
+      toast.error("Error removing commission override")
+    } finally {
+      setSaving(prev => ({ ...prev, [leadId]: false }))
     }
   }
 
@@ -413,13 +500,25 @@ export default function CommissionDetailsPage() {
       {/* Commission Slabs */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Commission Slabs
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Current commission rates based on deal value ranges
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Commission Slabs
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Current commission rates based on deal value ranges
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleEditSlabs}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Slabs
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3">
@@ -543,14 +642,16 @@ export default function CommissionDetailsPage() {
                   <TableCell>{formatDate(lead.createdAt)}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      {!lead.commission && (
+                      {lead.commission && (
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleOverrideCommission(lead)}
-                          title="Override calculated commission"
+                          onClick={() => handleDeleteCommission(lead.id)}
+                          title="Remove manual override"
+                          className="text-red-600 hover:text-red-700"
+                          disabled={saving[lead.id]}
                         >
-                          <Edit className="h-4 w-4" />
+                          {saving[lead.id] ? 'Removing...' : <Trash2 className="h-4 w-4" />}
                         </Button>
                       )}
                       {lead.commission && (
@@ -620,6 +721,96 @@ export default function CommissionDetailsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Commission Slabs Edit Dialog */}
+      <Dialog open={slabEditDialogOpen} onOpenChange={setSlabEditDialogOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Edit Commission Slabs</DialogTitle>
+            <DialogDescription>
+              Configure commission rates for different deal value ranges for {data?.user.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-3">
+              {editingSlabs.map((slab, index) => (
+                <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
+                  <div className="flex-1 grid grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Min Amount ($)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={slab.minAmount}
+                        onChange={(e) => updateSlabField(index, 'minAmount', e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Max Amount ($)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={slab.maxAmount || ''}
+                        onChange={(e) => updateSlabField(index, 'maxAmount', e.target.value)}
+                        placeholder="Unlimited"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Rate (%)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={slab.rate}
+                        onChange={(e) => updateSlabField(index, 'rate', e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                  {editingSlabs.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeSlab(index)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addSlab}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Slab
+              </Button>
+              
+              <div className="text-xs text-muted-foreground">
+                <p>• Leave Max Amount empty for unlimited upper range</p>
+                <p>• Example: $0-$500 at 2%, $500+ at 5%</p>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSlabEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveSlabs} 
+              disabled={savingSlabs}
+            >
+              {savingSlabs ? 'Saving...' : 'Save Slabs'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       </div>
     </DashboardLayout>

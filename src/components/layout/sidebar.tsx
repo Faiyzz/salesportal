@@ -48,7 +48,10 @@ export function Sidebar({ className, isCollapsed = false, onToggle }: SidebarPro
     { label: "Commissions", icon: Percent, href: "/admin/commissions" },
     { label: "Total Revenue", icon: DollarSign, href: "/admin/total-revenue" },
   ]
-  const salesManagerRoutes = adminRoutes.filter(r => r.href !== "/admin/total-revenue")
+  const salesManagerRoutes = adminRoutes.filter(
+  r => r.href !== "/admin/total-revenue" && r.href !== "/admin/commissions"
+);
+
   const salesRoutes = [
     { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
     { label: "My Meetings", icon: Calendar, href: "/dashboard/meetings" },
