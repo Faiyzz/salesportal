@@ -85,7 +85,17 @@ export async function GET(
       // Calculate commission based on slabs if no manual commission is set
       let calculatedCommission = null
       if (user.commissionSlabs && user.commissionSlabs.length > 0 && dealValue > 0) {
-        const calculation = calculateCommission(dealValue, user.commissionSlabs)
+        // Convert Prisma Decimal types to numbers for the calculator
+        const slabsForCalculation = user.commissionSlabs.map((slab: any) => ({
+          id: slab.id,
+          minAmount: Number(slab.minAmount),
+          maxAmount: slab.maxAmount ? Number(slab.maxAmount) : null,
+          rate: Number(slab.rate)
+        }))
+        console.log(`Slabs for calculation:`, slabsForCalculation)
+        
+        const calculation = calculateCommission(dealValue, slabsForCalculation)
+        console.log(`Commission calculation for lead ${lead.name} (${dealValue}):`, calculation)
         calculatedCommission = {
           amount: calculation.totalCommission || 0,
           rate: calculation.appliedRate || 0,

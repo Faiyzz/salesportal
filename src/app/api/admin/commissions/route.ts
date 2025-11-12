@@ -78,7 +78,15 @@ export async function GET(request: NextRequest) {
         const dealValue = lead.estimatedValue ? Number(lead.estimatedValue) : 0
         
         if (person.commissionSlabs && person.commissionSlabs.length > 0) {
-          const calculation = calculateCommission(dealValue, person.commissionSlabs)
+          // Convert Prisma Decimal types to numbers for the calculator
+          const slabsForCalculation = person.commissionSlabs.map((slab: any) => ({
+            id: slab.id,
+            minAmount: Number(slab.minAmount),
+            maxAmount: slab.maxAmount ? Number(slab.maxAmount) : null,
+            rate: Number(slab.rate)
+          }))
+          
+          const calculation = calculateCommission(dealValue, slabsForCalculation)
           totalCalculatedCommission += calculation.totalCommission
         }
 

@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
       `"${commission.lead.company || ''}"`,
       commission.lead.estimatedValue || 0,
       commission.commissionAmount,
-      commission.commissionRate || '',
+      commission.appliedRate || '',
       commission.createdAt.toISOString().split('T')[0],
       `"${commission.createdBy.name || ''}"`,
       `"${commission.notes || ''}"`

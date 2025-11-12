@@ -131,25 +131,28 @@ export default function CommissionDetailsPage() {
       setLoading(true)
       const params = new URLSearchParams()
       
-      if (dateFilter?.startDate && dateFilter?.endDate) {
+      if (dateFilter?.startDate) {
         params.append('startDate', dateFilter.startDate)
+      }
+      if (dateFilter?.endDate) {
         params.append('endDate', dateFilter.endDate)
       }
-
-      const response = await fetch(`/api/admin/commissions/${userId}?${params.toString()}`)
       
+      // Add cache-busting parameter to ensure fresh data
+      params.append('t', Date.now().toString())
+
+      const response = await fetch(`/api/admin/commissions/${userId}?${params}`, {
+        cache: 'no-store'
+      })
       if (response.ok) {
         const result = await response.json()
         setData(result)
       } else {
-        const error = await response.json()
-        toast.error(error.error || "Failed to fetch commission details")
-        router.push('/admin/commissions')
+        toast.error("Failed to fetch commission details")
       }
     } catch (error) {
       console.error("Error fetching commission details:", error)
       toast.error("Error fetching commission details")
-      router.push('/admin/commissions')
     } finally {
       setLoading(false)
     }
@@ -333,7 +336,16 @@ export default function CommissionDetailsPage() {
       if (response.ok) {
         toast.success("Commission slabs updated successfully")
         setSlabEditDialogOpen(false)
-        fetchCommissionDetails() // Refresh to show new calculations
+        
+        // Add a small delay to ensure database transaction is complete
+        setTimeout(() => {
+          // Force refresh with current date filters to show new calculations
+          if (startDate && endDate) {
+            fetchCommissionDetails({ startDate, endDate })
+          } else {
+            fetchCommissionDetails()
+          }
+        }, 500)
       } else {
         const error = await response.json()
         toast.error(error.error || "Failed to update commission slabs")
@@ -370,6 +382,36 @@ export default function CommissionDetailsPage() {
       toast.error("Error removing commission override")
     } finally {
       setSaving(prev => ({ ...prev, [leadId]: false }))
+    }
+  }
+
+  const handleClearAllManualCommissions = async () => {
+    if (!confirm("Are you sure you want to remove ALL manual commission overrides? This will revert all deals to auto-calculated commissions based on slabs.")) {
+      return
+    }
+
+    try {
+      setSavingSlabs(true)
+      
+      // Delete all manual commissions for this user
+      const response = await fetch(`/api/admin/commissions/${userId}/clear-all`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        toast.success("All manual commissions cleared successfully")
+        setTimeout(() => {
+          fetchCommissionDetails()
+        }, 500)
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Failed to clear manual commissions")
+      }
+    } catch (error) {
+      console.error("Error clearing manual commissions:", error)
+      toast.error("Error clearing manual commissions")
+    } finally {
+      setSavingSlabs(false)
     }
   }
 
@@ -432,8 +474,12 @@ export default function CommissionDetailsPage() {
   }
 
   const totalClosings = data.leads.reduce((sum, lead) => sum + lead.estimatedValue, 0)
-  const totalCommissions = data.leads.reduce((sum, lead) => sum + (lead.commission?.amount || 0), 0)
-  const leadsWithCommission = data.leads.filter(lead => lead.commission).length
+  const totalCommissions = data.leads.reduce((sum, lead) => {
+    // Use manual commission if available, otherwise use calculated commission
+    const commissionAmount = lead.commission?.amount || lead.calculatedCommission?.amount || 0
+    return sum + commissionAmount
+  }, 0)
+  const leadsWithCommission = data.leads.filter(lead => lead.commission || lead.calculatedCommission).length
 
   return (
     <DashboardLayout>
@@ -510,14 +556,25 @@ export default function CommissionDetailsPage() {
                 Current commission rates based on deal value ranges
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleEditSlabs}
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Slabs
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEditSlabs}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Slabs
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearAllManualCommissions}
+                className="text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear All Manual
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

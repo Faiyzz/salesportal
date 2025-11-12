@@ -54,13 +54,13 @@ export async function POST(
       // Update existing commission
       isUpdate = true
       const previousAmount = lead.commission.commissionAmount
-      const previousRate = lead.commission.commissionRate
+      const previousRate = lead.commission.appliedRate
 
       commission = await prisma.commission.update({
         where: { id: lead.commission.id },
         data: {
           commissionAmount,
-          commissionRate: commissionRate || null,
+          appliedRate: commissionRate || 0,
           notes: notes || null,
           updatedAt: new Date()
         },
@@ -98,7 +98,7 @@ export async function POST(
           leadId,
           userId,
           commissionAmount,
-          commissionRate: commissionRate || null,
+          appliedRate: commissionRate || 0,
           notes: notes || null,
           createdById: session.user.id
         },
@@ -135,7 +135,7 @@ export async function POST(
       commission: {
         id: commission.id,
         amount: Number(commission.commissionAmount),
-        rate: commission.commissionRate ? Number(commission.commissionRate) : null,
+        rate: commission.appliedRate ? Number(commission.appliedRate) : null,
         notes: commission.notes,
         createdAt: commission.createdAt.toISOString(),
         updatedAt: commission.updatedAt.toISOString()
